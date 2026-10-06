@@ -75,8 +75,15 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
       body: blob
     });
     
+    // Check for rate limiting
+    if (res.status === 429) {
+      console.error("Deepgram rate limited (HTTP 429). Retry-After:", res.headers.get('Retry-After'));
+      return { transcript: "[Rate limited - please try again in a moment]", speakers: [] };
+    }
+    
     const body = await readJson(res, "Deepgram");
     console.log("Deepgram full response:", JSON.stringify(body, null, 2));
+    console.log("Deepgram HTTP status:", res.status);
     
     if (!body?.results?.channels?.[0]?.alternatives?.[0]) {
       console.log("Deepgram response format unexpected. Full response:", JSON.stringify(body));
@@ -86,6 +93,9 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
       // Check if there's a top-level error
       if (body?.error) {
         console.log("Deepgram error:", body.error);
+      }
+      if (res.status !== 200) {
+        console.log("Non-200 HTTP status:", res.status, "body:", JSON.stringify(body));
       }
       const fallbackTranscript = body?.results?.channels?.[0]?.alternatives?.[0]?.transcript || "[No speech detected]";
       return { transcript: fallbackTranscript, speakers: [] };
