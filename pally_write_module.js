@@ -45,7 +45,8 @@ async function readJson(res, label) {
 
 async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true) {
   try {
-    // audioBytes is a Uint8Array, wrap it properly for fetch
+    // audioBytes is a Uint8Array from concatenated MediaRecorder chunks
+    // Each chunk is a WebM fragment; we need to send as raw audio and let Deepgram detect format
     const blob = new Blob([audioBytes], { type: "audio/webm" });
     console.log("Deepgram: Received audio of", audioBytes.length, "bytes, blob size:", blob.size);
     
@@ -53,16 +54,13 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
     if (audioBytes.length > 4) {
       const header = new Uint8Array(audioBytes.slice(0, 4));
       const headerHex = Array.from(header).map(b => b.toString(16).padStart(2, '0')).join('');
-      console.log("Audio file header:", headerHex, "(WebM starts with 1a45df a3)");
+      console.log("Audio file header:", headerHex, "(WebM starts with 1a45dfa3)");
     }
-    
-    // Log audio duration estimate (Opus typically ~20ms per frame at 48kHz)
-    const estimatedDurationSec = (audioBytes.length / 2400).toFixed(2); // rough estimate
-    console.log("Estimated audio duration:", estimatedDurationSec, "seconds");
     
     // Build URL with diarization if enabled
     // Use nova-2-general model which is better for multi-speaker scenarios
-    let url = DEEPGRAM_URL + "?model=nova-2-general&smart_format=true&punctuate=true&sample_rate=16000&profanity_filter=false";
+    // Add encoding=opus to tell Deepgram the audio is Opus codec
+    let url = DEEPGRAM_URL + "?model=nova-2-general&encoding=opus&sample_rate=48000&smart_format=true&punctuate=true&profanity_filter=false";
     if (enableDiarization) {
       // Enable diarization with higher sensitivity
       url += "&diarize=true&diarize_version=2023-12-06&utterances=true&detect_language=true";
