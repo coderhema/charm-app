@@ -43,12 +43,18 @@ async function readJson(res, label) {
   return body;
 }
 
-async function transcribeWithDeepgram(env, audioBytes) {
+async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true) {
   try {
     // audioBytes is a Uint8Array, wrap it properly for fetch
     const blob = new Blob([audioBytes], { type: "audio/webm" });
     
-    const res = await env.fetch(DEEPGRAM_URL + "?model=nova-2&smart_format=true&punctuate=true&sample_rate=16000", {
+    // Build URL with diarization if enabled
+    let url = DEEPGRAM_URL + "?model=nova-2&smart_format=true&punctuate=true&sample_rate=16000";
+    if (enableDiarization) {
+      url += "&diarize=true&utterances=true";
+    }
+    
+    const res = await env.fetch(url, {
       method: "POST",
       headers: {
         "Authorization": "Token {{secret:DEEPGRAM_KEY}}",
@@ -62,16 +68,52 @@ async function transcribeWithDeepgram(env, audioBytes) {
     
     if (!body?.results?.channels?.[0]?.alternatives?.[0]) {
       console.log("Deepgram response format unexpected:", JSON.stringify(body).slice(0, 200));
-      return "[No speech detected]"
+      return { transcript: "[No speech detected]", speakers: [] };
     }
     
-    const transcript = body.results.channels[0].alternatives[0].transcript || "";
+    const alternative = body.results.channels[0].alternatives[0];
+    const transcript = alternative.transcript || "";
+    const paragraphs = alternative.paragraphs;
     
-    return transcript || "[No speech detected]";
+    // Process speaker info for diarization
+    let speakers = [];
+    let formattedTranscript = transcript;
+    
+    if (enableDiarization && paragraphs?.paragraphs) {
+      const speakerMap = {};
+      const speakerColors = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c'];
+      
+      // Collect unique speakers
+      paragraphs.paragraphs.forEach(para => {
+        const speaker = para.speaker;
+        if (speaker !== undefined && !speakerMap[speaker]) {
+          speakerMap[speaker] = {
+            id: speaker,
+            color: speakerColors[Object.keys(speakerMap).length % speakerColors.length]
+          };
+        }
+      });
+      
+      speakers = Object.values(speakerMap);
+      
+      // Format transcript with speaker labels
+      formattedTranscript = paragraphs.paragraphs.map(para => {
+        const speakerId = para.speaker;
+        const speakerNum = speakerId !== undefined ? speakerId + 1 : 1;
+        const text = para.sentences?.map(s => s.text).join(' ') || '';
+        return `[Speaker ${speakerNum}]: ${text}`;
+      }).join('\n\n');
+    }
+    
+    return { 
+      transcript: formattedTranscript || transcript || "[No speech detected]", 
+      speakers: speakers,
+      rawTranscript: transcript
+    };
   } catch (e) {
     console.log("Deepgram error:", e.message);
     // Return fallback instead of throwing
-    return `[Transcription failed: ${e.message.slice(0, 50)}]`;
+    return { transcript: `[Transcription failed: ${e.message.slice(0, 50)}]`, speakers: [] };
   }
 }
 
@@ -130,7 +172,8 @@ export const routes = [
         "content": { "type": "string" },
         "hasAudio": { "type": "boolean" },
         "audioKey": { "oneOf": [{"type": "string"}, {"type": "null"}] },
-        "duration": { "type": "number" }
+        "duration": { "type": "number" },
+        "starred": { "type": "boolean" }
       },
       "additionalProperties": false
     },
@@ -143,6 +186,7 @@ export const routes = [
         hasAudio: !!input.hasAudio,
         audioKey: input.audioKey || "",
         duration: input.duration || 0,
+        starred: !!input.starred,
         createdAt: new Date().toISOString()
       };
       notes.unshift(note);
@@ -162,7 +206,8 @@ export const routes = [
         "content": { "type": "string" },
         "hasAudio": { "type": "boolean" },
         "audioKey": { "oneOf": [{"type": "string"}, {"type": "null"}] },
-        "duration": { "type": "number" }
+        "duration": { "type": "number" },
+        "starred": { "type": "boolean" }
       },
       "additionalProperties": false
     },
@@ -177,7 +222,8 @@ export const routes = [
         content: input.content !== undefined ? clean(input.content, 10000) : existing.content,
         hasAudio: input.hasAudio !== undefined ? !!input.hasAudio : existing.hasAudio,
         audioKey: input.audioKey !== undefined ? (input.audioKey || "") : existing.audioKey,
-        duration: input.duration !== undefined ? input.duration : existing.duration
+        duration: input.duration !== undefined ? input.duration : existing.duration,
+        starred: input.starred !== undefined ? !!input.starred : existing.starred
       };
       notes[idx] = updated;
       await env.storage.put("notes", notes);
@@ -211,14 +257,20 @@ export const routes = [
     "inputSchema": {
       "type": "object",
       "required": ["audioBase64"],
-      "properties": { "audioBase64": { "type": "string" } },
+      "properties": { 
+        "audioBase64": { "type": "string" },
+        "diarize": { "type": "boolean" }
+      },
       "additionalProperties": false
     },
     "handler": async (input, { env }) => {
       const binary = Uint8Array.from(atob(input.audioBase64), c => c.charCodeAt(0));
-      const transcript = await transcribeWithDeepgram(env, binary);
+      const result = await transcribeWithDeepgram(env, binary, input.diarize !== false);
+      const { transcript, speakers, rawTranscript } = result;
       return { 
         transcript,
+        speakers,
+        rawTranscript,
         success: !transcript.startsWith('[Transcription failed') && !transcript.startsWith('[No speech')
       };
     }

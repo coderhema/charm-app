@@ -17,8 +17,16 @@ const ICONS = {
   notebook: '<svg width="104" height="104" viewBox="0 0 104 104" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M56.6669 18.6639H31.9984C30.2301 18.6639 28.5343 19.3664 27.284 20.6167C26.0337 21.8671 25.3312 23.5629 25.3312 25.3311V78.6687C25.3312 80.437 26.0337 82.1328 27.284 83.3832C28.5343 84.6335 30.2301 85.3359 31.9984 85.3359H72.0013C73.7696 85.3359 75.4654 84.6335 76.7157 83.3832C77.966 82.1328 78.6685 80.437 78.6685 78.6687V54.0001M18.6641 31.9983H31.9984M18.6641 45.3327H31.9984M18.6641 58.6671H31.9984M18.6641 72.0015H31.9984M83.2621 30.7521C84.59 29.4241 85.3361 27.623 85.3361 25.745C85.3361 23.867 84.59 22.0659 83.2621 20.7379C81.9341 19.41 80.133 18.6639 78.255 18.6639C76.377 18.6639 74.576 19.41 73.248 20.7379L56.5468 37.4459C55.7542 38.2381 55.1741 39.2172 54.86 40.2928L52.0698 49.8603C51.9861 50.1471 51.9811 50.4512 52.0553 50.7406C52.1294 51.0301 52.28 51.2943 52.4913 51.5056C52.7026 51.7169 52.9668 51.8675 53.2562 51.9416C53.5457 52.0158 53.8497 52.0108 54.1366 51.9271L63.704 49.1369C64.7796 48.8228 65.7587 48.2426 66.5508 47.4501L83.2621 30.7521Z" stroke="#6B4E3A" stroke-width="1.5" stroke-linecap="round"/></svg>',
   trash: '<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2.5 5H4.16667H17.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M6.66699 5V3.33333C6.66699 2.89131 6.84259 2.46738 7.15515 2.15482C7.46771 1.84226 7.89163 1.66667 8.33366 1.66667H11.667C12.109 1.66667 12.5329 1.84226 12.8455 2.15482C13.158 2.46738 13.3337 2.89131 13.3337 3.33333V5M15.8337 5V16.6667C15.8337 17.1087 15.658 17.5326 15.3455 17.8452C15.0329 18.1577 14.609 18.3333 14.167 18.3333H5.83366C5.39163 18.3333 4.96771 18.1577 4.65515 17.8452C4.34259 17.5326 4.16699 17.1087 4.16699 16.6667V5H15.8337Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   context: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>',
-  close: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+  close: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>',
+  star: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+  starFilled: '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>'
 };
+const AUDIO_MODE = {
+  MICROPHONE: 'microphone',
+  SYSTEM: 'system',
+  BOTH: 'both'
+};
+
 const CSS = `
 :root {
   --cream: #fffdf8;
@@ -387,6 +395,72 @@ html, body {
 .pw-card-action-btn.edit:hover { background: #f0ebe5; }
 .pw-card-action-btn.delete { color: var(--red); background: #fef2f2; }
 .pw-card-action-btn.delete:hover { background: #fee2e2; }
+.pw-card-action-btn.star { color: var(--muted); background: var(--cream); }
+.pw-card-action-btn.star:hover { background: #f0ebe5; }
+.pw-card-action-btn.star.starred { color: #eab308; background: #fefce8; }
+.pw-card-action-btn.star.starred:hover { background: #fef9c3; }
+
+/* Recording UI styles */
+.pw-recording-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.pw-speaker-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: white;
+}
+.pw-speaker-1 { background: rgba(37,99,235,0.3) !important; border-color: rgba(37,99,235,0.5) !important; }
+.pw-speaker-2 { background: rgba(220,38,38,0.3) !important; border-color: rgba(220,38,38,0.5) !important; }
+.pw-speaker-3 { background: rgba(5,150,105,0.3) !important; border-color: rgba(5,150,105,0.5) !important; }
+.pw-speaker-4 { background: rgba(124,58,237,0.3) !important; border-color: rgba(124,58,237,0.5) !important; }
+.pw-speaker-5 { background: rgba(234,88,12,0.3) !important; border-color: rgba(234,88,12,0.5) !important; }
+.pw-audio-mode-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+  justify-content: center;
+}
+.pw-audio-mode-btn {
+  padding: 10px 16px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.pw-audio-mode-btn:hover, .pw-audio-mode-btn.active {
+  background: var(--brown);
+  border-color: var(--brown);
+}
+.pw-transcription-text {
+  font-size: 15px;
+  line-height: 1.7;
+  text-align: left;
+  max-width: 320px;
+}
+.pw-transcription-text .speaker-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-right: 6px;
+  color: white;
+}
 `;
 
 /* ========== STATE ========== */
@@ -403,7 +477,13 @@ let state = {
   libraryFilter: 'recent',
   editingNote: null,
   selectedNoteId: null,
-  editPageOpen: false
+  editPageOpen: false,
+  searchQuery: '',
+  searchHistory: JSON.parse(localStorage.getItem('pw_searchHistory') || '[]'),
+  audioMode: AUDIO_MODE.MICROPHONE,
+  speakers: [],
+  activeSpeaker: null,
+  recordingStarted: false
 };
 
 /* ========== HELPERS ========== */
@@ -459,8 +539,8 @@ function renderHome() {
         <span>${note.hasAudio ? 'Voice note' : 'Text'}</span>
       </div>
       <div class="pw-card-actions">
-        <button class="pw-card-action-btn context" onclick="event.stopPropagation(); showNoteContext('${note.id}')">
-          ${ICONS.context} Context
+        <button class="pw-card-action-btn star ${note.starred ? 'starred' : ''}" onclick="event.stopPropagation(); toggleStarNote('${note.id}')">
+          ${note.starred ? ICONS.starFilled : ICONS.star} ${note.starred ? 'Starred' : 'Star'}
         </button>
         <button class="pw-card-action-btn edit" onclick="event.stopPropagation(); editNote('${note.id}')">
           ${ICONS.edit} Edit
@@ -487,7 +567,7 @@ function renderHome() {
       <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px; padding-bottom: 100px;" onclick="hideContextMenu()">
         ${notes}
       </div>
-      <div class="pw-fab" onclick="startRecording()">${ICONS.quill}</div>
+      <div class="pw-fab" onclick="startTextNote()" style="right: 50%; transform: translateX(50%);">${ICONS.edit}</div>
       <div class="pw-tabs">
         <div class="pw-tab active" onclick="showHome()">${ICONS.fileText}<span>Notes</span></div>
         <div class="pw-tab" onclick="showLibrary()">${ICONS.mic}<span>Air Notes</span></div>
@@ -499,6 +579,14 @@ function renderHome() {
           <div class="pw-context-menu-item" style="color: var(--ink);" onclick="editNote('${state.contextMenu.noteId}')">
             ${ICONS.edit}
             <span>Edit Note</span>
+          </div>
+          <div class="pw-context-menu-item" style="color: var(--brown);" onclick="toggleStarNote('${state.contextMenu.noteId}'); hideContextMenu();">
+            ${state.notes.find(n => n.id === state.contextMenu.noteId)?.starred ? ICONS.starFilled : ICONS.star}
+            <span>${state.notes.find(n => n.id === state.contextMenu.noteId)?.starred ? 'Unstar Note' : 'Star Note'}</span>
+          </div>
+          <div class="pw-context-menu-item" onclick="showNoteContextInfo('${state.contextMenu.noteId}'); hideContextMenu();">
+            ${ICONS.context}
+            <span>View Context</span>
           </div>
           <div class="pw-context-menu-item" onclick="deleteNote('${state.contextMenu.noteId}')">
             ${ICONS.trash}
@@ -521,6 +609,8 @@ function renderLibrary() {
     audioNotes = audioNotes.sort((a, b) => (b.duration || 0) - (a.duration || 0));
   } else if (state.libraryFilter === 'linked') {
     audioNotes = audioNotes.filter(n => n.title && n.title.length > 0);
+  } else if (state.libraryFilter === 'starred') {
+    audioNotes = audioNotes.filter(n => n.starred).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
   
   const notes = audioNotes.length ? audioNotes.map(note => `
@@ -559,11 +649,13 @@ function renderLibrary() {
           <span style="cursor: pointer; ${state.libraryFilter === 'recent' ? 'color: var(--ink); font-weight: 600; border-bottom: 2px solid var(--ink); padding-bottom: 2px;' : ''}" onclick="setLibraryFilter('recent')">Recent</span>
           <span style="cursor: pointer; ${state.libraryFilter === 'longest' ? 'color: var(--ink); font-weight: 600; border-bottom: 2px solid var(--ink); padding-bottom: 2px;' : ''}" onclick="setLibraryFilter('longest')">Longest</span>
           <span style="cursor: pointer; ${state.libraryFilter === 'linked' ? 'color: var(--ink); font-weight: 600; border-bottom: 2px solid var(--ink); padding-bottom: 2px;' : ''}" onclick="setLibraryFilter('linked')">Linked</span>
+          <span style="cursor: pointer; ${state.libraryFilter === 'starred' ? 'color: var(--ink); font-weight: 600; border-bottom: 2px solid var(--ink); padding-bottom: 2px;' : ''}" onclick="setLibraryFilter('starred')">Starred</span>
         </div>
         <div style="display: flex; flex-direction: column; gap: 12px;">
           ${notes}
         </div>
       </div>
+      <div class="pw-fab" onclick="startAirNoteRecording()" style="right: 50%; transform: translateX(50%);">${ICONS.mic}</div>
       <div class="pw-tabs">
         <div class="pw-tab" onclick="showHome()">${ICONS.fileText}<span>Notes</span></div>
         <div class="pw-tab active" onclick="showLibrary()">${ICONS.mic}<span>Air Notes</span></div>
@@ -575,45 +667,177 @@ function renderLibrary() {
 }
 
 function renderRecording() {
+  const speakerColors = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c'];
+  
+  // Format transcription with speaker labels styled
+  const formatTranscription = (text) => {
+    if (!text) return '<span style="opacity: 0.6;">Listening... transcribing with speaker detection</span>';
+    return text.replace(/\[Speaker (\d+)\]:([^\[]*)/g, (match, num, content) => {
+      const color = speakerColors[parseInt(num) - 1] || speakerColors[0];
+      const speakerClass = `pw-speaker-${Math.min(parseInt(num), 5)}`;
+      return `<span><span class="speaker-tag ${speakerClass}" style="background: ${color};">Speaker ${num}</span>${content}</span>`;
+    }).replace(/\[Speaker (\d+)\]\s*/g, (match, num) => {
+      const color = speakerColors[parseInt(num) - 1] || speakerColors[0];
+      const speakerClass = `pw-speaker-${Math.min(parseInt(num), 5)}`;
+      return `<span class="speaker-tag ${speakerClass}" style="background: ${color};">Speaker ${num}</span>`;
+    }).replace(/\n/g, '<br/>').replace(/<br\/>(<span\s+class=\"speaker-tag)/g, '<br/><br/>$1');
+  };
+  
+  const speakerBadges = state.speakers.length > 0 && state.recordingStarted
+    ? `<div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 16px;">
+        ${state.speakers.map((s, i) => {
+          const speakerNum = i + 1;
+          const color = s.color || speakerColors[i];
+          const isActive = state.activeSpeaker === s.id;
+          return `
+            <span class="pw-speaker-indicator ${isActive ? 'pw-speaker-' + Math.min(i + 1, 5) : ''}" 
+                  style="${isActive ? '' : 'opacity: 0.7; font-weight: 400;'}">
+              <span style="width: 8px; height: 8px; background: ${color}; border-radius: 50%;${isActive ? ' box-shadow: 0 0 8px ' + color : ''}"></span>
+              Speaker ${speakerNum}
+            </span>
+          `;
+        }).join('')}
+       </div>`
+    : '';
+  
   return `
     <div class="pw-app" style="background: var(--dark-blue); color: white;">
+      <style>
+        @keyframes pulse { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.6); } }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+      </style>
       <div style="display: flex; align-items: center; justify-content: space-between; padding: 16px 24px;">
         <span style="cursor: pointer;" onclick="cancelRecording()">${ICONS.back}</span>
         <span class="pw-title-sm" style="color: white;">New Note</span>
-        <span>${ICONS.more}</span>
+        <span style="cursor: pointer;" onclick="cancelRecording()">${ICONS.close}</span>
       </div>
-      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px;">
-        <div style="margin-bottom: 40px;">
-          ${state.transcription ? `<p style="font-size: 16px; line-height: 1.5; text-align: center; max-width: 300px;">${state.transcription}</p>` : `<p style="opacity: 0.6; font-size: 14px;">Recording... Speak now</p>`}
-        </div>
-        <div style="display: flex; align-items: center; gap: 3px; margin: 40px 0;">
-          ${[12,24,32,40,36,28,20,12].map(h => `<div style="width: 3px; height: ${h}px; background: white; border-radius: 2px; ${state.recording ? 'animation: pulse 1s ease-in-out infinite' : ''}"></div>`).join('')}
-        </div>
-        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 20px;">
-          <div style="width: 10px; height: 10px; background: var(--red); border-radius: 50%;"></div>
-          <span style="font-weight: 600;">RECORDING AIR NOTE</span>
-        </div>
-        <h1 style="font-size: 48px; font-family: var(--font-display); margin-bottom: 40px;">${formatTime(state.recordingTime)}</h1>
-        <div style="display: flex; gap: 12px; width: 100%; max-width: 300px;">
-          <button class="pw-btn" style="flex: 1; background: transparent; border: 1px solid white; color: white;" onclick="cancelRecording()">Stop</button>
-          <button class="pw-btn pw-btn-primary" style="flex: 1; background: var(--brown);" onclick="saveRecording()">Save Note</button>
-        </div>
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; min-height: 0;">
+        ${!state.recordingStarted ? `
+          <div style="margin-bottom: 32px; text-align: center;">
+            <p style="opacity: 0.9; font-size: 15px; margin-bottom: 20px;">Choose audio source:</p>
+            <div class="pw-audio-mode-select">
+              <button class="pw-audio-mode-btn ${state.audioMode === 'microphone' ? 'active' : ''}" onclick="setAudioMode('microphone')">
+                🎤 Microphone
+              </button>
+              <button class="pw-audio-mode-btn ${state.audioMode === 'system' ? 'active' : ''}" onclick="setAudioMode('system')">
+                🖥️ System Audio
+              </button>
+              <button class="pw-audio-mode-btn ${state.audioMode === 'both' ? 'active' : ''}" onclick="setAudioMode('both')">
+                🎤+🖥️ Both
+              </button>
+            </div>
+            <p style="opacity: 0.6; font-size: 12px; margin-top: 12px; max-width: 280px;">
+              ${state.audioMode === 'system' ? 'Will capture audio from your device (calls, videos, etc.)' : 
+                state.audioMode === 'both' ? 'Captures microphone + system/screen audio together' : 
+                'Standard microphone recording from your device'}
+            </p>
+          </div>
+          <button class="pw-btn pw-btn-primary" style="background: var(--brown); padding: 16px 48px; font-size: 16px;" onclick="startRecordingWithMode()">
+            Start Recording
+          </button>
+        ` : `
+          <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: 100%; overflow-y: auto; padding-top: 20px;">
+            ${speakerBadges}
+            <div style="margin-bottom: 24px; max-width: 340px; width: 100%; text-align: left;">
+              <div class="pw-transcription-text">
+                ${formatTranscription(state.transcription)}
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 3px; margin: 24px 0;">
+              ${[12,24,32,40,36,28,20,12].map((h, i) => `<div style="width: 3px; height: ${h}px; background: white; border-radius: 2px; animation: pulse 0.8s ease-in-out infinite; animation-delay: ${i * 0.05}s;"></div>`).join('')}
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+              <div style="width: 10px; height: 10px; background: var(--red); border-radius: 50%; animation: blink 1s infinite;"></div>
+              <span style="font-weight: 600;">RECORDING</span>
+              ${state.audioMode === 'both' ? '<span style="opacity: 0.7; font-size: 13px;">(Mic + System)</span>' : 
+                state.audioMode === 'system' ? '<span style="opacity: 0.7; font-size: 13px;">(System)</span>' : 
+                '<span style="opacity: 0.7; font-size: 13px;">(Microphone)</span>'}
+            </div>
+            <h1 style="font-size: 48px; font-family: var(--font-display); margin-bottom: 32px;">${formatTime(state.recordingTime)}</h1>
+            <div style="display: flex; gap: 12px; width: 100%; max-width: 300px;">
+              <button class="pw-btn" style="flex: 1; background: transparent; border: 1px solid white; color: white;" onclick="cancelRecording()">Stop & Discard</button>
+              <button class="pw-btn pw-btn-primary" style="flex: 1; background: var(--brown);" onclick="saveRecording()">Save Note</button>
+            </div>
+          </div>
+        `}
       </div>
     </div>
   `;
 }
 
 function renderSearch() {
+  const query = state.searchQuery || '';
+  const results = getSearchResults(query);
+  
+  // Recent searches chips
+  const recentSearchesHtml = state.searchHistory.length > 0 && !query
+    ? `
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div style="font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">Recent Searches</div>
+        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+          ${state.searchHistory.slice(0, 8).map(q => `
+            <div onclick="useSearchHistory('${escapeHtml(q)}')" 
+                 style="display: flex; align-items: center; gap: 6px; 
+                        padding: 8px 14px; background: var(--cream); border-radius: 20px; 
+                        font-size: 13px; color: var(--ink); cursor: pointer;
+                        border: 1px solid var(--border); transition: all 0.15s ease;">
+              <span style="color: var(--brown);">${ICONS.search}</span>
+              ${escapeHtml(q)}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `
+    : '';
+  
+  const resultsHtml = query.length > 0
+    ? (results.length > 0
+        ? results.map(note => `
+            <div class="pw-card" onclick="openNote('${note.id}')" style="cursor: pointer;">
+              <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <span class="pw-title-sm" style="flex: 1; font-size: 16px;">${highlightMatch(note.title, query)}</span>
+                <span class="pw-note-badge">${note.hasAudio ? '🎙️ Voice' : '📝 Text'}</span>
+              </div>
+              <p class="pw-text" style="font-size: 13px; margin-bottom: 8px;">${highlightMatch(getSearchPreview(note.content, query), query)}</p>
+              <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted);">
+                <span>${formatDate(note.createdAt)}</span>
+                <span>${note.content.length} chars</span>
+              </div>
+            </div>
+          `).join('')
+        : `<div class="pw-placeholder">
+            <div style="font-size: 48px;">🔍</div>
+            <p class="pw-text">No notes found for "${escapeHtml(query)}"</p>
+          </div>`
+      )
+    : recentSearchesHtml || `<div class="pw-placeholder">
+        <div style="font-size: 48px;">🔍</div>
+        <p class="pw-text">Start typing to search your notes...</p>
+      </div>`;
+
   return `
     <div class="pw-app">
       <div class="pw-header">
         <span class="pw-title-sm">Search</span>
       </div>
-      <div style="padding: 20px;">
+      <div style="padding: 20px; display: flex; flex-direction: column; gap: 16px; padding-bottom: 100px;">
         <div style="display: flex; align-items: center; gap: 8px; padding: 13px 15px; border: 1px solid var(--border-dark); border-radius: 10px; color: var(--muted);">
           ${ICONS.search}
-          <input type="text" placeholder="Search notes..." style="border: none; background: transparent; flex: 1; font-size: 14px; outline: none;">
+          <input 
+            type="text" 
+            id="search-input"
+            value="${escapeHtml(query)}"
+            placeholder="Search notes..." 
+            style="border: none; background: transparent; flex: 1; font-size: 14px; outline: none; color: var(--ink);"
+            oninput="handleSearchInput(this.value)"
+            onfocus="this.parentElement.style.borderColor='var(--brown)'"
+            onblur="this.parentElement.style.borderColor=''"
+            onkeydown="if(event.key === 'Enter') { addToSearchHistory(this.value); }"
+          >
+          ${query ? `<div style="cursor: pointer;" onclick="clearSearch()">${ICONS.close}</div>` : ''}
         </div>
+        ${query ? `<div style="font-size: 12px; color: var(--muted);">Found ${results.length} result${results.length !== 1 ? 's' : ''}</div>` : ''}
+        ${resultsHtml}
       </div>
       <div class="pw-tabs">
         <div class="pw-tab" onclick="showHome()">${ICONS.fileText}<span>Notes</span></div>
@@ -712,7 +936,121 @@ function selectNote(id) {
 
 function showNoteContext(id) {
   console.log('Show context for note:', id);
-  // Context menu could show additional options
+}
+
+function showNoteContextInfo(id) {
+  const note = state.notes.find(n => n.id === id);
+  if (note) {
+    const info = [
+      `Type: ${note.hasAudio ? 'Voice Note' : 'Text Note'}`,
+      `Created: ${formatFullDate(note.createdAt)}`,
+      note.hasAudio ? `Duration: ${formatTime(note.duration || 0)}` : '',
+      `Content Length: ${note.content.length} characters`,
+      `ID: ${note.id.slice(0, 8)}...`
+    ].filter(Boolean).join('\n');
+    alert(info);
+  }
+}
+
+function getSearchResults(query) {
+  if (!query || query.trim().length === 0) return [];
+  const lowerQuery = query.toLowerCase();
+  return state.notes.filter(note => {
+    const titleMatch = note.title && note.title.toLowerCase().includes(lowerQuery);
+    const contentMatch = note.content && note.content.toLowerCase().includes(lowerQuery);
+    return titleMatch || contentMatch;
+  }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+}
+
+function getSearchPreview(content, query) {
+  const lowerContent = (content || '').toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const index = lowerContent.indexOf(lowerQuery);
+  if (index === -1) return content.substring(0, 120);
+  
+  const start = Math.max(0, index - 40);
+  const end = Math.min(content.length, index + query.length + 40);
+  let preview = content.substring(start, end);
+  if (start > 0) preview = '...' + preview;
+  if (end < content.length) preview = preview + '...';
+  return preview;
+}
+
+function highlightMatch(text, query) {
+  if (!query || query.trim().length === 0) return escapeHtml(text);
+  const lowerText = (text || '').toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  let result = '';
+  let lastIndex = 0;
+  let index = lowerText.indexOf(lowerQuery);
+  
+  while (index !== -1) {
+    result += escapeHtml(text.substring(lastIndex, index));
+    result += `<mark style="background: #e8d5c4; color: var(--brown); border-radius: 2px; padding: 0 2px;">${escapeHtml(text.substring(index, index + query.length))}</mark>`;
+    lastIndex = index + query.length;
+    index = lowerText.indexOf(lowerQuery, lastIndex);
+  }
+  result += escapeHtml(text.substring(lastIndex));
+  return result;
+}
+
+function handleSearchInput(value) {
+  state.searchQuery = value;
+  render();
+  // Refocus the input after render
+  setTimeout(() => {
+    const input = document.getElementById('search-input');
+    if (input && document.activeElement !== input) {
+      input.focus();
+      const len = input.value.length;
+      input.setSelectionRange(len, len);
+    }
+  }, 0);
+}
+
+function addToSearchHistory(query) {
+  if (!query || query.trim().length === 0) return;
+  const trimmed = query.trim();
+  // Remove if already exists, then add to front
+  state.searchHistory = state.searchHistory.filter(q => q.toLowerCase() !== trimmed.toLowerCase());
+  state.searchHistory.unshift(trimmed);
+  // Keep only last 10
+  state.searchHistory = state.searchHistory.slice(0, 10);
+  // Save to localStorage
+  localStorage.setItem('pw_searchHistory', JSON.stringify(state.searchHistory));
+}
+
+function useSearchHistory(query) {
+  state.searchQuery = query;
+  render();
+}
+
+function clearSearch() {
+  state.searchQuery = '';
+  render();
+}
+
+async function toggleStarNote(id) {
+  const note = state.notes.find(n => n.id === id);
+  if (!note) return;
+  
+  const newStarred = !note.starred;
+  try {
+    const updated = await api.updateNote({
+      id: id,
+      starred: newStarred
+    });
+    
+    const index = state.notes.findIndex(n => n.id === id);
+    if (index !== -1) {
+      state.notes[index] = { ...state.notes[index], ...updated };
+    }
+    hideContextMenu();
+    render();
+  } catch (e) {
+    console.error('Failed to update star:', e);
+    alert('Failed to update: ' + e.message);
+  }
 }
 
 function editNote(id) {
@@ -858,7 +1196,229 @@ async function deleteNote(noteId) {
   }
 }
 
+function startTextNote() {
+  // Create a new text note directly in edit mode
+  state.editingNote = { id: null, title: '', content: '', hasAudio: false, audioKey: '', duration: 0, createdAt: new Date().toISOString() };
+  state.view = 'edit';
+  state.editPageOpen = true;
+  render();
+}
+
+function startAirNoteRecording() {
+  // Air note recording - called from Air Notes view FAB
+  // Shows audio mode selection screen first
+  state.view = 'recording';
+  state.recording = true;
+  state.recordingStarted = false;
+  state.recordingTime = 0;
+  state.transcription = '';
+  state.speakers = [];
+  state.activeSpeaker = null;
+  render();
+}
+
+function setAudioMode(mode) {
+  state.audioMode = mode;
+  render();
+}
+
+function generateTempTranscription() {
+  // Generate temporary transcription placeholder that includes speaker labels
+  // This simulates what Deepgram will return with diarization
+  const speakerColors = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c'];
+  
+  // Update speakers list if not set
+  if (state.speakers.length === 0) {
+    state.speakers = [
+      { id: 0, color: speakerColors[0] },
+      { id: 1, color: speakerColors[1] }
+    ];
+  }
+  
+  // Simulate speaker activity during recording
+  if (state.recordingTime % 5 === 0) {
+    state.activeSpeaker = Math.floor(Math.random() * state.speakers.length);
+    state.speakers[state.activeSpeaker].lastActive = Date.now();
+  }
+  
+  // Update transcription with placeholder
+  const phrases = [
+    "Um, today we're discussing the...",
+    "The meeting to capture this audio.",
+    "So that's basically what we're trying to...",
+    "Right, so when we...",
+    "Yeah, exactly. The transcription...",
+    "And it should show different...",
+    "Speakers with different colors."
+  ];
+  
+  const currentSpeaker = state.activeSpeaker || 0;
+  const currentLine = `[Speaker ${currentSpeaker + 1}]: ${phrases[Math.floor(state.recordingTime / 3) % phrases.length]}`;
+  
+  if (state.transcription && !state.transcription.includes(currentLine)) {
+    state.transcription += (state.transcription ? '\n\n' : '') + currentLine;
+    render();
+  }
+}
+
+async function startRecordingWithMode() {
+  state.recordingStarted = true;
+  state.audioChunks = [];
+  render();
+  
+  try {
+    // Determine what to capture based on audio mode
+    const needsMic = state.audioMode === AUDIO_MODE.MICROPHONE || state.audioMode === AUDIO_MODE.BOTH;
+    const needsSys = state.audioMode === AUDIO_MODE.SYSTEM || state.audioMode === AUDIO_MODE.BOTH;
+    
+    let micStream = null;
+    let screenStream = null;
+    let combinedStream = null;
+    
+    // Get microphone stream if needed
+    if (needsMic) {
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+            sampleRate: 16000
+          }
+        });
+      } catch (e) {
+        if (!needsSys) {
+          throw new Error('Microphone access denied');
+        }
+        console.log('Mic access denied, falling back to system audio only');
+      }
+    }
+    
+    // Get system audio stream if needed
+    if (needsSys) {
+      try {
+        screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: false,
+          audio: true
+        });
+        
+        // Filter to audio only - keep the audio track
+        const audioTrack = screenStream.getAudioTracks()[0];
+        if (!audioTrack) {
+          throw new Error('No system audio available');
+        }
+      } catch (e) {
+        if (!micStream) {
+          throw new Error('Neither microphone nor system audio available');
+        }
+        if (state.audioMode === AUDIO_MODE.SYSTEM) {
+          throw new Error('System audio access denied. Use microphone mode instead.');
+        }
+        console.log('Screen audio not available, using microphone only');
+        combinedStream = micStream;
+      }
+    }
+    
+    // Combine streams if both are available
+    if (micStream && screenStream) {
+      const micTrack = micStream.getAudioTracks()[0];
+      const sysTrack = screenStream.getAudioTracks()[0];
+      
+      if (micTrack && sysTrack) {
+        // Create audio context to mix both streams
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        const micSource = audioContext.createMediaStreamSource(micStream);
+        const sysSource = audioContext.createMediaStreamSource(screenStream);
+        
+        const destination = audioContext.createMediaStreamDestination();
+        
+        const micGain = audioContext.createGain();
+        micGain.gain.value = 0.8;
+        
+        const sysGain = audioContext.createGain();
+        sysGain.gain.value = 0.8;
+        
+        micSource.connect(micGain);
+        sysSource.connect(sysGain);
+        micGain.connect(destination);
+        sysGain.connect(destination);
+        
+        combinedStream = destination.stream;
+        
+        // Store for cleanup
+        state.audioContext = audioContext;
+      } else if (micTrack) {
+        combinedStream = micStream;
+      } else if (sysTrack) {
+        combinedStream = screenStream;
+      }
+    } else if (micStream) {
+      combinedStream = micStream;
+    } else if (screenStream) {
+      combinedStream = screenStream;
+    }
+    
+    if (!combinedStream) {
+      throw new Error('No audio streams available');
+    }
+    
+    // Store source streams for cleanup
+    state.micStream = micStream;
+    state.screenStream = screenStream;
+    
+    // Try different mimeTypes
+    const mimeTypes = [
+      'audio/webm;codecs=opus',
+      'audio/webm',
+      'audio/ogg;codecs=opus'
+    ];
+    
+    let mediaRecorder;
+    for (const mimeType of mimeTypes) {
+      if (MediaRecorder.isTypeSupported(mimeType)) {
+        mediaRecorder = new MediaRecorder(combinedStream, { mimeType });
+        console.log(`Using mimeType: ${mimeType}`);
+        break;
+      }
+    }
+    
+    if (!mediaRecorder) {
+      mediaRecorder = new MediaRecorder(combinedStream);
+    }
+    
+    state.mediaRecorder = mediaRecorder;
+    
+    state.mediaRecorder.ondataavailable = e => {
+      if (e.data && e.data.size > 0) {
+        state.audioChunks.push(e.data);
+      }
+    };
+    
+    state.mediaRecorder.start(1000);
+    
+    // Start transcription interval
+    state.transcriptionInterval = setInterval(generateTempTranscription, 100);
+    
+    // Update timer
+    state.timerInterval = setInterval(() => {
+      state.recordingTime++;
+      if (state.recordingTime >= 600) saveRecording();
+      render();
+    }, 1000);
+    
+    render();
+    
+  } catch (e) {
+    console.error('Recording failed:', e);
+    state.transcription = `Recording failed: ${e.message}`;
+    render();
+  }
+}
+
+// Keep startRecording for backward compatibility - it now goes to recording from home
 function startRecording() {
+  // Recording button from FAB - for voice notes
   state.view = 'recording';
   state.recording = true;
   state.recordingTime = 0;
@@ -867,7 +1427,6 @@ function startRecording() {
   
   // Request microphone permission and start recording
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    // Try to get better quality audio
     navigator.mediaDevices.getUserMedia({ 
       audio: {
         echoCancellation: false,
@@ -876,7 +1435,6 @@ function startRecording() {
         sampleRate: 16000
       }
     }).then(stream => {
-      // Try different mimeTypes to find one that works
       const mimeTypes = [
         'audio/webm;codecs=opus',
         'audio/webm',
@@ -893,14 +1451,12 @@ function startRecording() {
       }
       
       if (!mediaRecorder) {
-        mediaRecorder = new MediaRecorder(stream); // Fallback to default
-        console.log('Using default MediaRecorder');
+        mediaRecorder = new MediaRecorder(stream);
       }
       
       state.mediaRecorder = mediaRecorder;
       state.audioChunks = [];
       
-      // Simple recording
       state.mediaRecorder.ondataavailable = e => { 
         if (e.data && e.data.size > 0) {
           state.audioChunks.push(e.data);
@@ -910,10 +1466,9 @@ function startRecording() {
       
       state.mediaRecorder.start(1000);
       
-      // Update timer
       state.timerInterval = setInterval(() => {
         state.recordingTime++;
-        if (state.recordingTime >= 600) saveRecording(); // 10 min max
+        if (state.recordingTime >= 600) saveRecording();
         render();
       }, 1000);
     }).catch(() => {
@@ -924,12 +1479,47 @@ function startRecording() {
 }
 
 function cancelRecording() {
+  // Clean up audio resources
   if (state.mediaRecorder && state.mediaRecorder.state === 'recording') {
-    state.mediaRecorder.stop();
-    state.mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    try {
+      state.mediaRecorder.stop();
+      state.mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    } catch (e) {
+      console.log('Error stopping media recorder:', e);
+    }
   }
+  
+  // Clean up source streams
+  if (state.micStream) {
+    state.micStream.getTracks().forEach(t => t.stop());
+  }
+  if (state.screenStream) {
+    state.screenStream.getTracks().forEach(t => t.stop());
+  }
+  
+  // Close audio context if used
+  if (state.audioContext && state.audioContext.state !== 'closed') {
+    try {
+      state.audioContext.close();
+    } catch (e) {
+      console.log('Error closing audio context:', e);
+    }
+  }
+  
   if (state.timerInterval) clearInterval(state.timerInterval);
+  if (state.transcriptionInterval) clearInterval(state.transcriptionInterval);
+  
+  // Reset recording state
   state.recording = false;
+  state.recordingStarted = false;
+  state.mediaRecorder = null;
+  state.micStream = null;
+  state.screenStream = null;
+  state.audioContext = null;
+  state.transcription = '';
+  state.speakers = [];
+  state.activeSpeaker = null;
+  
   state.view = 'home';
   render();
 }
@@ -973,13 +1563,16 @@ async function saveRecording() {
         }
       }
       
-      // 2. Get transcription from backend (which calls Deepgram)
+      // 2. Get transcription from backend (which calls Deepgram with diarization)
       let transcription = '';
+      let speakers = [];
       if (hasAudioData) {
         try {
-          const transcribeRes = await api.transcribe({ audioBase64: base64Data });
+          const transcribeRes = await api.transcribe({ audioBase64: base64Data, diarize: true });
           transcription = transcribeRes.transcript || '';
+          speakers = transcribeRes.speakers || [];
           console.log('Transcription result:', transcription.substring(0, 100));
+          console.log('Speakers detected:', speakers);
         } catch (e) {
           console.log('Transcription failed:', e.message);
           transcription = `Voice recording (${durationMinutes} min)`;
@@ -1015,8 +1608,14 @@ async function saveRecording() {
       });
       
       state.notes.unshift(note);
+      
+      // Cleanup recording state
       state.audioChunks = [];
       state.transcription = '';
+      state.speakers = [];
+      state.activeSpeaker = null;
+      state.recordingStarted = false;
+      state.recording = false;
       state.view = 'home';
       render();
       
@@ -1027,6 +1626,11 @@ async function saveRecording() {
       alert('Failed to save: ' + e.message);
       
       state.audioChunks = [];
+      state.transcription = '';
+      state.speakers = [];
+      state.activeSpeaker = null;
+      state.recordingStarted = false;
+      state.recording = false;
       state.view = 'home';
       render();
     }
@@ -1134,6 +1738,8 @@ window.showWelcome = showWelcome;
 window.openNote = openNote;
 window.playNote = playNote;
 window.startRecording = startRecording;
+window.startTextNote = startTextNote;
+window.startAirNoteRecording = startAirNoteRecording;
 window.cancelRecording = cancelRecording;
 window.saveRecording = saveRecording;
 window.setLibraryFilter = setLibraryFilter;
@@ -1145,8 +1751,16 @@ window.handleNotePress = handleNotePress;
 window.hideContextMenu = hideContextMenu;
 window.selectNote = selectNote;
 window.showNoteContext = showNoteContext;
+window.showNoteContextInfo = showNoteContextInfo;
 window.confirmDeleteNote = confirmDeleteNote;
 window.closeEditPage = closeEditPage;
 window.saveAndCloseEdit = saveAndCloseEdit;
+window.handleSearchInput = handleSearchInput;
+window.clearSearch = clearSearch;
+window.setAudioMode = setAudioMode;
+window.startRecordingWithMode = startRecordingWithMode;
+window.toggleStarNote = toggleStarNote;
+window.useSearchHistory = useSearchHistory;
+window.addToSearchHistory = addToSearchHistory;
 
 init();
