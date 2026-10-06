@@ -1,0 +1,1 @@
+{"module": "export const manifest = {\"$schema\": \"https://charm.ing/schema/app-manifest/2026-07-31.json\", \"id\": \"pally-write\", \"meta\": {\"name\": \"Pally-Write\"}}; export const routes = [];", "ui": "console.log('test')", "label": "Test"}
