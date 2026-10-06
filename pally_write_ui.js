@@ -448,18 +448,19 @@ html, body {
 }
 .pw-transcription-text {
   font-size: 15px;
-  line-height: 1.7;
+  line-height: 1.8;
   text-align: left;
-  max-width: 320px;
+  max-width: 340px;
+  word-wrap: break-word;
+  white-space: normal;
 }
-.pw-transcription-text .speaker-tag {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  margin-right: 6px;
-  color: white;
+.pw-transcription-text strong {
+  font-weight: 700;
+}
+.pw-transcription-text br {
+  display: block;
+  content: "";
+  margin: 6px 0;
 }
 `;
 
@@ -672,18 +673,18 @@ function renderLibrary() {
 function renderRecording() {
   const speakerColors = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c'];
   
-  // Format transcription with speaker labels styled
+  // Format transcription with speaker labels styled, bold, and colored
   const formatTranscription = (text) => {
     if (!text) return '<span style="opacity: 0.6;">Listening... transcribing with speaker detection</span>';
     return text.replace(/\[Speaker (\d+)\]:([^\[]*)/g, (match, num, content) => {
-      const color = speakerColors[parseInt(num) - 1] || speakerColors[0];
-      const speakerClass = `pw-speaker-${Math.min(parseInt(num), 5)}`;
-      return `<span><span class="speaker-tag ${speakerClass}" style="background: ${color};">Speaker ${num}</span>${content}</span>`;
+      const speakerNum = parseInt(num);
+      const color = speakerColors[speakerNum - 1] || speakerColors[0];
+      return `<span><strong style="color: ${color}; font-weight: 700;">[Speaker ${speakerNum}]:</strong><span style="color: ${color};">${content}</span></span>`;
     }).replace(/\[Speaker (\d+)\]\s*/g, (match, num) => {
-      const color = speakerColors[parseInt(num) - 1] || speakerColors[0];
-      const speakerClass = `pw-speaker-${Math.min(parseInt(num), 5)}`;
-      return `<span class="speaker-tag ${speakerClass}" style="background: ${color};">Speaker ${num}</span>`;
-    }).replace(/\n/g, '<br/>').replace(/<br\/>(<span\s+class=\"speaker-tag)/g, '<br/><br/>$1');
+      const speakerNum = parseInt(num);
+      const color = speakerColors[speakerNum - 1] || speakerColors[0];
+      return `<strong style="color: ${color}; font-weight: 700;">[Speaker ${speakerNum}]:</strong>`;
+    }).replace(/\n/g, '<br/>').replace(/<br\/>(<strong\s+style=)/g, '<br/><br/>$1');
   };
   
   const speakerBadges = state.speakers.length > 0 && state.recordingStarted
