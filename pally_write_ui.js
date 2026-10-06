@@ -1717,33 +1717,35 @@ async function saveRecording() {
         transcription = `Voice note (${durationMinutes} min)`;
       }
       
-      // 3. Get summary if we got real transcription
+      // 4. Detect recording type (solo, call, or group) FIRST
+      const recordingType = detectRecordingType(speakers.length);
+      const recordingTypeLabel = getRecordingTypeLabel(recordingType);
+      
+      // 3. Get summary ONLY for solo recordings (multi-speaker needs full transcription)
       let summary = '';
-      if (transcription && 
+      if (recordingType === 'solo' && 
+          transcription && 
           transcription.length > 30 && 
           !transcription.includes('Voice recording') && 
           !transcription.includes('Voice note')) {
         try {
           const summaryRes = await api.summarize({ text: transcription });
           summary = summaryRes.summary || '';
+          console.log('Summary generated for solo recording:', summary.substring(0, 100));
         } catch (e) { 
           console.log('Summarize failed:', e);
         }
       }
       
-      // 4. Detect recording type (solo, call, or group)
-      const recordingType = detectRecordingType(speakers.length);
-      const recordingTypeLabel = getRecordingTypeLabel(recordingType);
-      
       // Format content based on recording type
       let content = '';
       if (recordingType === 'solo') {
-        // Solo: simpler format (just summary, no speaker labels)
+        // Solo: use summary if available, otherwise use transcript without speaker labels
         const cleanTranscript = transcription.replace(/\[Speaker \d+\]:\s*/g, '');
         content = summary || cleanTranscript;
       } else {
-        // Call/Group: keep full transcription with speaker identification
-        content = summary || transcription;
+        // Call/Group: ALWAYS use full transcription with speaker labels (never summarize multi-speaker)
+        content = transcription;
       }
       
       // 5. Create the note
