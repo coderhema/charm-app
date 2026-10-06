@@ -480,10 +480,13 @@ let state = {
   editPageOpen: false,
   searchQuery: '',
   searchHistory: JSON.parse(localStorage.getItem('pw_searchHistory') || '[]'),
-  audioMode: AUDIO_MODE.MICROPHONE,
+  audioMode: localStorage.getItem('pw_audioMode') || AUDIO_MODE.MICROPHONE,
   speakers: [],
   activeSpeaker: null,
-  recordingStarted: false
+  recordingStarted: false,
+  audioContext: null,
+  micStream: null,
+  screenStream: null
 };
 
 /* ========== HELPERS ========== */
@@ -713,28 +716,20 @@ function renderRecording() {
       </div>
       <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; min-height: 0;">
         ${!state.recordingStarted ? `
-          <div style="margin-bottom: 32px; text-align: center;">
-            <p style="opacity: 0.9; font-size: 15px; margin-bottom: 20px;">Choose audio source:</p>
-            <div class="pw-audio-mode-select">
-              <button class="pw-audio-mode-btn ${state.audioMode === 'microphone' ? 'active' : ''}" onclick="setAudioMode('microphone')">
-                🎤 Microphone
-              </button>
-              <button class="pw-audio-mode-btn ${state.audioMode === 'system' ? 'active' : ''}" onclick="setAudioMode('system')">
-                🖥️ System Audio
-              </button>
-              <button class="pw-audio-mode-btn ${state.audioMode === 'both' ? 'active' : ''}" onclick="setAudioMode('both')">
-                🎤+🖥️ Both
-              </button>
-            </div>
-            <p style="opacity: 0.6; font-size: 12px; margin-top: 12px; max-width: 280px;">
-              ${state.audioMode === 'system' ? 'Will capture audio from your device (calls, videos, etc.)' : 
-                state.audioMode === 'both' ? 'Captures microphone + system/screen audio together' : 
-                'Standard microphone recording from your device'}
+          <div style="text-align: center;">
+            <p style="opacity: 0.9; font-size: 15px; margin-bottom: 20px;">Recording with: <strong>${state.audioMode === 'microphone' ? '🎤 Microphone' : state.audioMode === 'system' ? '🖥️ System Audio' : '🎤+🖥️ Both'}</strong></p>
+            <p style="opacity: 0.6; font-size: 12px; margin-bottom: 24px; max-width: 280px;">
+              ${state.audioMode === 'system' ? 'Capturing audio from your device' : 
+                state.audioMode === 'both' ? 'Capturing microphone + system audio' : 
+                'Recording from your microphone'}
             </p>
+            <button class="pw-btn pw-btn-primary" style="background: var(--brown); padding: 16px 48px; font-size: 16px; margin-bottom: 12px;" onclick="startRecordingWithMode()">
+              Start Recording
+            </button>
+            <button class="pw-btn pw-btn-secondary" style="width: 100%; max-width: 200px;" onclick="showAudioModeSettings()">
+              Change Audio Source
+            </button>
           </div>
-          <button class="pw-btn pw-btn-primary" style="background: var(--brown); padding: 16px 48px; font-size: 16px;" onclick="startRecordingWithMode()">
-            Start Recording
-          </button>
         ` : `
           <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; width: 100%; overflow-y: auto; padding-top: 20px;">
             ${speakerBadges}
@@ -1219,7 +1214,27 @@ function startAirNoteRecording() {
 
 function setAudioMode(mode) {
   state.audioMode = mode;
+  localStorage.setItem('pw_audioMode', mode);
   render();
+}
+
+function showAudioModeSettings() {
+  const modes = [
+    { id: 'microphone', label: '🎤 Microphone Only', desc: 'Record from your microphone' },
+    { id: 'system', label: '🖥️ System Audio Only', desc: 'Capture device audio (calls, videos, etc.)' },
+    { id: 'both', label: '🎤+🖥️ Both', desc: 'Microphone + system audio combined' }
+  ];
+  
+  const options = modes.map(m => `
+    <div onclick="setAudioMode('${m.id}'); render();" 
+         style="padding: 12px; margin-bottom: 12px; border: 2px solid ${state.audioMode === m.id ? 'var(--brown)' : 'var(--border)'}; border-radius: 8px; cursor: pointer; text-align: center;">
+      <div style="font-weight: 600; margin-bottom: 4px;">${m.label}</div>
+      <div style="font-size: 12px; color: var(--muted);">${m.desc}</div>
+    </div>
+  `).join('');
+  
+  alert(`Audio Source Selection\n\nCurrent: ${state.audioMode}\n\nSelect which audio to capture:`);
+  // Show selection via custom modal or use built-in selection
 }
 
 function generateTempTranscription() {
@@ -1267,13 +1282,13 @@ async function startRecordingWithMode() {
   render();
   
   try {
-    // Determine what to capture based on audio mode
     const needsMic = state.audioMode === AUDIO_MODE.MICROPHONE || state.audioMode === AUDIO_MODE.BOTH;
     const needsSys = state.audioMode === AUDIO_MODE.SYSTEM || state.audioMode === AUDIO_MODE.BOTH;
     
     let micStream = null;
     let screenStream = null;
-    let combinedStream = null;
+    let audioContext = null;
+    let destination = null;
     
     // Get microphone stream if needed
     if (needsMic) {
@@ -1283,122 +1298,107 @@ async function startRecordingWithMode() {
             echoCancellation: false,
             noiseSuppression: false,
             autoGainControl: false,
-            sampleRate: 16000
+            sampleRate: { ideal: 16000 }
           }
         });
       } catch (e) {
         if (!needsSys) {
-          throw new Error('Microphone access denied');
+          throw new Error('Microphone access denied: ' + e.message);
         }
-        console.log('Mic access denied, falling back to system audio only');
+        console.log('Mic access denied, using system audio only:', e.message);
       }
     }
     
-    // Get system audio stream if needed
+    // Get system audio stream if needed (macOS/Windows via getDisplayMedia)
     if (needsSys) {
       try {
         screenStream = await navigator.mediaDevices.getDisplayMedia({
           video: false,
-          audio: true
+          audio: { echoCancellation: false }
         });
-        
-        // Filter to audio only - keep the audio track
-        const audioTrack = screenStream.getAudioTracks()[0];
-        if (!audioTrack) {
-          throw new Error('No system audio available');
-        }
       } catch (e) {
         if (!micStream) {
-          throw new Error('Neither microphone nor system audio available');
+          throw new Error('System audio access denied and no microphone: ' + e.message);
         }
         if (state.audioMode === AUDIO_MODE.SYSTEM) {
-          throw new Error('System audio access denied. Use microphone mode instead.');
+          throw new Error('System audio not available. Switch to microphone mode.');
         }
-        console.log('Screen audio not available, using microphone only');
-        combinedStream = micStream;
+        console.log('System audio not available, using microphone only:', e.message);
       }
     }
     
-    // Combine streams if both are available
+    // Determine which stream to use
+    let recordingStream = null;
     if (micStream && screenStream) {
-      const micTrack = micStream.getAudioTracks()[0];
-      const sysTrack = screenStream.getAudioTracks()[0];
+      // Mix both streams using Web Audio API
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      destination = audioContext.createMediaStreamDestination();
       
-      if (micTrack && sysTrack) {
-        // Create audio context to mix both streams
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        
-        const micSource = audioContext.createMediaStreamSource(micStream);
-        const sysSource = audioContext.createMediaStreamSource(screenStream);
-        
-        const destination = audioContext.createMediaStreamDestination();
-        
-        const micGain = audioContext.createGain();
-        micGain.gain.value = 0.8;
-        
-        const sysGain = audioContext.createGain();
-        sysGain.gain.value = 0.8;
-        
-        micSource.connect(micGain);
-        sysSource.connect(sysGain);
-        micGain.connect(destination);
-        sysGain.connect(destination);
-        
-        combinedStream = destination.stream;
-        
-        // Store for cleanup
-        state.audioContext = audioContext;
-      } else if (micTrack) {
-        combinedStream = micStream;
-      } else if (sysTrack) {
-        combinedStream = screenStream;
-      }
+      const micSource = audioContext.createMediaStreamSource(micStream);
+      const sysSource = audioContext.createMediaStreamSource(screenStream);
+      
+      const micGain = audioContext.createGain();
+      const sysGain = audioContext.createGain();
+      
+      micGain.gain.value = 0.7;
+      sysGain.gain.value = 0.7;
+      
+      micSource.connect(micGain);
+      sysSource.connect(sysGain);
+      micGain.connect(destination);
+      sysGain.connect(destination);
+      
+      recordingStream = destination.stream;
     } else if (micStream) {
-      combinedStream = micStream;
+      recordingStream = micStream;
     } else if (screenStream) {
-      combinedStream = screenStream;
+      recordingStream = screenStream;
+    } else {
+      throw new Error('No audio source available');
     }
     
-    if (!combinedStream) {
-      throw new Error('No audio streams available');
-    }
-    
-    // Store source streams for cleanup
+    // Store refs for cleanup
     state.micStream = micStream;
     state.screenStream = screenStream;
+    state.audioContext = audioContext;
     
-    // Try different mimeTypes
-    const mimeTypes = [
-      'audio/webm;codecs=opus',
-      'audio/webm',
-      'audio/ogg;codecs=opus'
-    ];
-    
+    // Create MediaRecorder with supported mimeType
+    const mimeTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
     let mediaRecorder;
+    let usedMimeType = '';
+    
     for (const mimeType of mimeTypes) {
       if (MediaRecorder.isTypeSupported(mimeType)) {
-        mediaRecorder = new MediaRecorder(combinedStream, { mimeType });
-        console.log(`Using mimeType: ${mimeType}`);
+        mediaRecorder = new MediaRecorder(recordingStream, { mimeType });
+        usedMimeType = mimeType;
+        console.log(`Using audio format: ${mimeType}`);
         break;
       }
     }
     
     if (!mediaRecorder) {
-      mediaRecorder = new MediaRecorder(combinedStream);
+      mediaRecorder = new MediaRecorder(recordingStream);
+      console.log('Using browser default audio format');
     }
     
     state.mediaRecorder = mediaRecorder;
     
-    state.mediaRecorder.ondataavailable = e => {
+    mediaRecorder.ondataavailable = (e) => {
       if (e.data && e.data.size > 0) {
         state.audioChunks.push(e.data);
+        console.log(`Audio chunk recorded: ${e.data.size} bytes`);
       }
     };
     
-    state.mediaRecorder.start(1000);
+    mediaRecorder.onerror = (e) => {
+      console.error('MediaRecorder error:', e);
+      state.transcription = 'Recording error: ' + (e.error || 'unknown');
+      render();
+    };
     
-    // Start transcription interval
-    state.transcriptionInterval = setInterval(generateTempTranscription, 100);
+    // Start recording with 100ms intervals for better audio capture
+    mediaRecorder.start(100);
+    console.log('Recording started with audio mode:', state.audioMode);
     
     // Update timer
     state.timerInterval = setInterval(() => {
@@ -1410,8 +1410,9 @@ async function startRecordingWithMode() {
     render();
     
   } catch (e) {
-    console.error('Recording failed:', e);
-    state.transcription = `Recording failed: ${e.message}`;
+    console.error('Recording initialization failed:', e);
+    state.recordingStarted = false;
+    state.transcription = 'Error: ' + e.message;
     render();
   }
 }
@@ -1759,6 +1760,7 @@ window.handleSearchInput = handleSearchInput;
 window.clearSearch = clearSearch;
 window.setAudioMode = setAudioMode;
 window.startRecordingWithMode = startRecordingWithMode;
+window.showAudioModeSettings = showAudioModeSettings;
 window.toggleStarNote = toggleStarNote;
 window.useSearchHistory = useSearchHistory;
 window.addToSearchHistory = addToSearchHistory;
