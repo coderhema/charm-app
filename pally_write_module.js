@@ -47,6 +47,7 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
   try {
     // audioBytes is a Uint8Array, wrap it properly for fetch
     const blob = new Blob([audioBytes], { type: "audio/webm" });
+    console.log("Deepgram: Received audio of", audioBytes.length, "bytes, blob size:", blob.size);
     
     // Build URL with diarization if enabled
     // Use nova-2-general model which is better for multi-speaker scenarios
@@ -69,8 +70,12 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
     const body = await readJson(res, "Deepgram");
     
     if (!body?.results?.channels?.[0]?.alternatives?.[0]) {
-      console.log("Deepgram response format unexpected:", JSON.stringify(body).slice(0, 200));
-      return { transcript: "[No speech detected]", speakers: [] };
+      console.log("Deepgram response format unexpected. Full response:", JSON.stringify(body));
+      if (body?.results?.channels?.[0]) {
+        console.log("Has channels but no alternatives. Alternatives:", body.results.channels[0].alternatives);
+      }
+      const fallbackTranscript = body?.results?.channels?.[0]?.alternatives?.[0]?.transcript || "[No speech detected]";
+      return { transcript: fallbackTranscript, speakers: [] };
     }
     
     const alternative = body.results.channels[0].alternatives[0];

@@ -1632,6 +1632,12 @@ async function saveRecording() {
   const audioKey = 'audio/' + Date.now() + '.webm';
   const durationMinutes = (state.recordingTime / 60).toFixed(1);
   
+  // Log audio details for debugging
+  console.log(`Audio details: ${state.audioChunks.length} chunks, total blob size: ${audioBlob.size} bytes, recording time: ${state.recordingTime}s`);
+  state.audioChunks.forEach((chunk, i) => {
+    console.log(`  Chunk ${i}: ${chunk.size} bytes, type: ${chunk.type}`);
+  });
+  
   // Check if we actually captured audio
   const hasAudioData = state.audioChunks.length > 0 && audioBlob.size > 100;
   
