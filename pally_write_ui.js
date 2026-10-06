@@ -1044,11 +1044,30 @@ function showNoteContextInfo(id) {
 function getSearchResults(query) {
   if (!query || query.trim().length === 0) return [];
   const lowerQuery = query.toLowerCase();
+  const words = lowerQuery.split(/\s+/).filter(w => w.length > 0);
+  
   return state.notes.filter(note => {
-    const titleMatch = note.title && note.title.toLowerCase().includes(lowerQuery);
-    const contentMatch = note.content && note.content.toLowerCase().includes(lowerQuery);
-    return titleMatch || contentMatch;
-  }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const lowerTitle = (note.title || '').toLowerCase();
+    const lowerContent = (note.content || '').toLowerCase();
+    
+    // All words must match either title or content
+    return words.every(word => {
+      return lowerTitle.includes(word) || lowerContent.includes(word);
+    });
+  }).sort((a, b) => {
+    // Prioritize title matches over content matches
+    const aTitle = (a.title || '').toLowerCase();
+    const bTitle = (b.title || '').toLowerCase();
+    const aHasTitleMatch = words.every(w => aTitle.includes(w));
+    const bHasTitleMatch = words.every(w => bTitle.includes(w));
+    
+    if (aHasTitleMatch !== bHasTitleMatch) {
+      return aHasTitleMatch ? -1 : 1;
+    }
+    
+    // Then sort by date
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
 }
 
 function getSearchPreview(content, query) {
@@ -1083,11 +1102,19 @@ function highlightMatch(text, query) {
   return result;
 }
 
+// Debounce search rendering
+let searchTimeout = null;
 function handleSearchInput(value) {
   state.searchQuery = value;
+  
+  // Clear previous timeout
+  if (searchTimeout) clearTimeout(searchTimeout);
+  
+  // Re-render immediately for snappy UI
   render();
-  // Refocus the input after render
-  setTimeout(() => {
+  
+  // Ensure input stays focused
+  searchTimeout = setTimeout(() => {
     const input = document.getElementById('search-input');
     if (input && document.activeElement !== input) {
       input.focus();
