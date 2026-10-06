@@ -716,7 +716,7 @@ function renderRecording() {
       </div>
       <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; min-height: 0;">
         ${!state.recordingStarted ? `
-          <div style="text-align: center;">
+          <div style="text-align: center; display: flex; flex-direction: column; align-items: center;">
             <p style="opacity: 0.9; font-size: 15px; margin-bottom: 20px;">Recording with: <strong>${state.audioMode === 'microphone' ? '🎤 Microphone' : state.audioMode === 'system' ? '🖥️ System Audio' : '🎤+🖥️ Both'}</strong></p>
             <p style="opacity: 0.6; font-size: 12px; margin-bottom: 24px; max-width: 280px;">
               ${state.audioMode === 'system' ? 'Capturing audio from your device' : 
@@ -726,7 +726,7 @@ function renderRecording() {
             <button class="pw-btn pw-btn-primary" style="background: var(--brown); padding: 16px 48px; font-size: 16px; margin-bottom: 12px;" onclick="startRecordingWithMode()">
               Start Recording
             </button>
-            <button class="pw-btn pw-btn-secondary" style="width: 100%; max-width: 200px;" onclick="showAudioModeSettings()">
+            <button class="pw-btn pw-btn-secondary" style="max-width: 200px;" onclick="showAudioModeSettings()">
               Change Audio Source
             </button>
           </div>
@@ -1569,13 +1569,17 @@ async function saveRecording() {
       let speakers = [];
       if (hasAudioData) {
         try {
+          console.log('Sending audio to Deepgram for transcription (', audioBlob.size, 'bytes)...');
           const transcribeRes = await api.transcribe({ audioBase64: base64Data, diarize: true });
           transcription = transcribeRes.transcript || '';
           speakers = transcribeRes.speakers || [];
-          console.log('Transcription result:', transcription.substring(0, 100));
-          console.log('Speakers detected:', speakers);
+          console.log('Transcription result:', transcription.substring(0, 150));
+          console.log('Speakers detected:', speakers.length > 0 ? speakers : 'No speakers detected');
+          if (speakers.length === 0) {
+            console.warn('⚠️ Speaker diarization returned no speakers. Check Deepgram response.');
+          }
         } catch (e) {
-          console.log('Transcription failed:', e.message);
+          console.error('Transcription failed:', e);
           transcription = `Voice recording (${durationMinutes} min)`;
         }
       } else {

@@ -6,7 +6,7 @@ export const manifest = {
     "icon": { "emoji": "📝", "bg": "#512906" }
   },
   "capabilities": {
-    "imports": ["charming:storage/kv@1.0", "charming:secrets/fetch@1.0", "charming:network/fetch@1.0", "charming:storage/blob@1.0"]
+    "imports": ["charming:storage/kv@1.0", "charming:secrets/fetch@1.0", "charming:network/fetch@1.0", "charming:storage/blob@1.0", "charming:browser/storage@1.0"]
   },
   "permissions": {
     "server": {
@@ -49,9 +49,11 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
     const blob = new Blob([audioBytes], { type: "audio/webm" });
     
     // Build URL with diarization if enabled
-    let url = DEEPGRAM_URL + "?model=nova-2&smart_format=true&punctuate=true&sample_rate=16000";
+    // Use nova-2-general model which is better for multi-speaker scenarios
+    let url = DEEPGRAM_URL + "?model=nova-2-general&smart_format=true&punctuate=true&sample_rate=16000&profanity_filter=false";
     if (enableDiarization) {
-      url += "&diarize=true&utterances=true";
+      // Enable diarization with higher sensitivity
+      url += "&diarize=true&diarize_version=2023-12-06&utterances=true&detect_language=true";
     }
     
     const res = await env.fetch(url, {
@@ -75,34 +77,40 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
     const transcript = alternative.transcript || "";
     const paragraphs = alternative.paragraphs;
     
-    // Process speaker info for diarization
     let speakers = [];
     let formattedTranscript = transcript;
     
-    if (enableDiarization && paragraphs?.paragraphs) {
+    if (enableDiarization && paragraphs?.paragraphs && paragraphs.paragraphs.length > 0) {
       const speakerMap = {};
       const speakerColors = ['#2563eb', '#dc2626', '#059669', '#7c3aed', '#ea580c'];
       
-      // Collect unique speakers
+      // Collect unique speakers from paragraphs
       paragraphs.paragraphs.forEach(para => {
         const speaker = para.speaker;
-        if (speaker !== undefined && !speakerMap[speaker]) {
+        if (speaker !== undefined && speaker !== null && !speakerMap[speaker]) {
+          const speakerIndex = Object.keys(speakerMap).length;
           speakerMap[speaker] = {
             id: speaker,
-            color: speakerColors[Object.keys(speakerMap).length % speakerColors.length]
+            index: speakerIndex,
+            color: speakerColors[speakerIndex % speakerColors.length]
           };
         }
       });
       
-      speakers = Object.values(speakerMap);
+      speakers = Object.values(speakerMap).sort((a, b) => a.id - b.id);
       
       // Format transcript with speaker labels
       formattedTranscript = paragraphs.paragraphs.map(para => {
         const speakerId = para.speaker;
-        const speakerNum = speakerId !== undefined ? speakerId + 1 : 1;
+        if (speakerId === undefined || speakerId === null) {
+          return para.sentences?.map(s => s.text).join(' ') || '';
+        }
+        const speakerNum = speakerId + 1;
         const text = para.sentences?.map(s => s.text).join(' ') || '';
-        return `[Speaker ${speakerNum}]: ${text}`;
-      }).join('\n\n');
+        return text ? `[Speaker ${speakerNum}]: ${text}` : '';
+      }).filter(line => line.length > 0).join('\n\n');
+    } else if (enableDiarization) {
+      console.log("Diarization enabled but no speaker data");
     }
     
     return { 
