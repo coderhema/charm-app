@@ -59,8 +59,7 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
     
     // Build URL with diarization if enabled
     // Use nova-2-general model which is better for multi-speaker scenarios
-    // Add encoding=opus to tell Deepgram the audio is Opus codec
-    let url = DEEPGRAM_URL + "?model=nova-2-general&encoding=opus&sample_rate=48000&smart_format=true&punctuate=true&profanity_filter=false";
+    let url = DEEPGRAM_URL + "?model=nova-2-general&smart_format=true&punctuate=true&profanity_filter=false";
     if (enableDiarization) {
       // Enable diarization with higher sensitivity
       url += "&diarize=true&diarize_version=2023-12-06&utterances=true&detect_language=true";
