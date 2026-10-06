@@ -49,6 +49,17 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
     const blob = new Blob([audioBytes], { type: "audio/webm" });
     console.log("Deepgram: Received audio of", audioBytes.length, "bytes, blob size:", blob.size);
     
+    // Check if audio has valid WebM header
+    if (audioBytes.length > 4) {
+      const header = new Uint8Array(audioBytes.slice(0, 4));
+      const headerHex = Array.from(header).map(b => b.toString(16).padStart(2, '0')).join('');
+      console.log("Audio file header:", headerHex, "(WebM starts with 1a45df a3)");
+    }
+    
+    // Log audio duration estimate (Opus typically ~20ms per frame at 48kHz)
+    const estimatedDurationSec = (audioBytes.length / 2400).toFixed(2); // rough estimate
+    console.log("Estimated audio duration:", estimatedDurationSec, "seconds");
+    
     // Build URL with diarization if enabled
     // Use nova-2-general model which is better for multi-speaker scenarios
     let url = DEEPGRAM_URL + "?model=nova-2-general&smart_format=true&punctuate=true&sample_rate=16000&profanity_filter=false";
@@ -68,11 +79,16 @@ async function transcribeWithDeepgram(env, audioBytes, enableDiarization = true)
     });
     
     const body = await readJson(res, "Deepgram");
+    console.log("Deepgram full response:", JSON.stringify(body, null, 2));
     
     if (!body?.results?.channels?.[0]?.alternatives?.[0]) {
       console.log("Deepgram response format unexpected. Full response:", JSON.stringify(body));
       if (body?.results?.channels?.[0]) {
         console.log("Has channels but no alternatives. Alternatives:", body.results.channels[0].alternatives);
+      }
+      // Check if there's a top-level error
+      if (body?.error) {
+        console.log("Deepgram error:", body.error);
       }
       const fallbackTranscript = body?.results?.channels?.[0]?.alternatives?.[0]?.transcript || "[No speech detected]";
       return { transcript: fallbackTranscript, speakers: [] };
