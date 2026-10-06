@@ -694,24 +694,32 @@ function renderLibrary() {
     audioNotes = audioNotes.filter(n => n.starred).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
   
-  const notes = audioNotes.length ? audioNotes.map(note => `
+  const notes = audioNotes.length ? audioNotes.map(note => {
+    const recordingType = detectRecordingType(note.content.split('[Speaker').length - 1);
+    const recordingTypeLabel = getRecordingTypeLabel(recordingType);
+    const hasLinks = /http|https|www|\[.*\]\(.*\)|ftp/i.test((note.content || '') + ' ' + (note.title || ''));
+    return `
     <div class="pw-card" style="cursor: pointer;" onclick="openNote('${note.id}')">
       <div style="display: flex; align-items: center; gap: 12px;">
-        <div style="width: 32px; height: 32px; background: var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+        <div style="width: 32px; height: 32px; background: var(--brown); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">
           ${ICONS.play}
         </div>
         <div style="flex: 1;">
           <div style="font-weight: 600; font-size: 14px;">${formatTime(note.duration)}</div>
-          <div style="font-size: 11px; color: var(--muted);">${note.title}</div>
+          <div style="font-size: 11px; color: var(--muted);">${note.title || recordingTypeLabel}</div>
         </div>
         <span style="font-size: 12px; color: var(--muted);">${formatDate(note.createdAt)}</span>
       </div>
       <div class="pw-waveform">${[1,2,3,4,5,6,7].map(i => `<div class="pw-waveform-bar" style="height: ${[8,12,6,14,10,4,12][i-1]}px;"></div>`).join('')}</div>
-      <div style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: #474747;">
-        ${ICONS.link} <span>Linked: ${note.title}</span>
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-size: 12px; padding-top: 8px; border-top: 1px solid var(--border);">
+        <span style="color: var(--brown); font-weight: 600;">${recordingTypeLabel}</span>
+        <span style="color: var(--muted);">Duration: ${formatTime(note.duration)}</span>
+        ${note.starred ? `<span style="color: var(--brown);">Starred</span>` : ''}
+        ${hasLinks ? `<span style="color: var(--brown);">Has links</span>` : ''}
       </div>
     </div>
-  `).join('') : `
+  `;
+  }).join('') : `
     <div class="pw-placeholder">
       <div style="font-size: 48px;">🎙️</div>
       <p class="pw-text">No voice notes yet. Start recording to create your first air note.</p>
