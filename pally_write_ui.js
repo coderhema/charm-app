@@ -462,6 +462,58 @@ html, body {
   content: "";
   margin: 6px 0;
 }
+.pw-transcribing-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(2px);
+}
+.pw-transcribing-modal {
+  background: white;
+  border-radius: 16px;
+  padding: 40px 32px;
+  text-align: center;
+  max-width: 280px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+.pw-transcribing-modal h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.pw-transcribing-modal p {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 24px;
+}
+.pw-spinner {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.pw-spinner-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--brown);
+  animation: bounce 1.4s infinite;
+}
+.pw-spinner-dot:nth-child(1) { animation-delay: 0s; }
+.pw-spinner-dot:nth-child(2) { animation-delay: 0.2s; }
+.pw-spinner-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 1; }
+  30% { transform: translateY(-10px); opacity: 0.7; }
+}
 `;
 
 /* ========== STATE ========== */
@@ -487,7 +539,9 @@ let state = {
   recordingStarted: false,
   audioContext: null,
   micStream: null,
-  screenStream: null
+  screenStream: null,
+  isTranscribing: false,
+  transcriptionProgress: 0
 };
 
 /* ========== HELPERS ========== */
@@ -1534,6 +1588,8 @@ async function saveRecording() {
   
   if (state.timerInterval) clearInterval(state.timerInterval);
   state.recording = false;
+  state.isTranscribing = true;
+  render();
   
   // Gather audio blobs into a single blob
   const audioBlob = new Blob(state.audioChunks, { type: 'audio/webm' });
@@ -1622,6 +1678,7 @@ async function saveRecording() {
       state.activeSpeaker = null;
       state.recordingStarted = false;
       state.recording = false;
+      state.isTranscribing = false;
       state.view = 'home';
       render();
       
@@ -1637,6 +1694,7 @@ async function saveRecording() {
       state.activeSpeaker = null;
       state.recordingStarted = false;
       state.recording = false;
+      state.isTranscribing = false;
       state.view = 'home';
       render();
     }
@@ -1700,7 +1758,27 @@ function render() {
     settings: renderSettings,
     edit: renderEdit
   };
-  app.innerHTML = (views[state.view] || views.welcome)();
+  
+  let html = (views[state.view] || views.welcome)();
+  
+  // Add transcribing overlay if active
+  if (state.isTranscribing) {
+    html += `
+      <div class="pw-transcribing-overlay">
+        <div class="pw-transcribing-modal">
+          <div class="pw-spinner">
+            <div class="pw-spinner-dot"></div>
+            <div class="pw-spinner-dot"></div>
+            <div class="pw-spinner-dot"></div>
+          </div>
+          <h2>Transcribing...</h2>
+          <p>Processing your audio with speaker detection</p>
+        </div>
+      </div>
+    `;
+  }
+  
+  app.innerHTML = html;
 }
 
 /* ========== INIT ========== */
