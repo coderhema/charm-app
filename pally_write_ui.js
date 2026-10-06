@@ -514,6 +514,13 @@ html, body {
   0%, 60%, 100% { transform: translateY(0); opacity: 1; }
   30% { transform: translateY(-10px); opacity: 0.7; }
 }
+/* Scale SVG icons to fit their containers */
+.pw-app svg {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+}
 `;
 
 /* ========== STATE ========== */
@@ -582,7 +589,7 @@ function getRecordingTypeLabel(type) {
 function renderWelcome() {
   return `
     <div class="pw-app" style="justify-content: center; align-items: center; padding: 32px; text-align: center;">
-      <div style="margin-bottom: 32px;">${ICONS.notebook}</div>
+      <div style="margin-bottom: 32px; width: 80px; height: 80px; display: flex; align-items: center; justify-content: center; margin-left: auto; margin-right: auto;">${ICONS.notebook}</div>
       <h1 class="pw-title" style="margin-bottom: 12px;">Write freely.<br>Speak naturally.</h1>
       <p class="pw-text" style="margin-bottom: 32px; max-width: 280px;">
         Capture thoughts as text or voice notes - your voice becomes part of the page.
