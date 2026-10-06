@@ -1428,21 +1428,36 @@ async function startRecordingWithMode() {
       }
     }
     
-    // Get system audio stream if needed (macOS/Windows via getDisplayMedia)
+    // Get system audio stream if needed (via getDisplayMedia for audio)
     if (needsSys) {
       try {
+        // getDisplayMedia captures both screen video and audio tab/system audio
         screenStream = await navigator.mediaDevices.getDisplayMedia({
-          video: false,
-          audio: { echoCancellation: false }
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          },
+          video: false
+        }).catch(err => {
+          // If user cancels or it fails, fall back to microphone
+          console.log('getDisplayMedia failed, will use microphone only:', err.message);
+          return null;
         });
+        
+        if (!screenStream && !micStream) {
+          throw new Error('Could not get any audio source (system or microphone)');
+        }
       } catch (e) {
         if (!micStream) {
           throw new Error('System audio access denied and no microphone: ' + e.message);
         }
         if (state.audioMode === AUDIO_MODE.SYSTEM) {
-          throw new Error('System audio not available. Switch to microphone mode.');
+          console.warn('System audio not available in this browser/OS. Falling back to microphone.');
+          state.audioMode = AUDIO_MODE.MICROPHONE;
+        } else {
+          console.log('System audio not available, using microphone only:', e.message);
         }
-        console.log('System audio not available, using microphone only:', e.message);
       }
     }
     
@@ -1515,8 +1530,9 @@ async function startRecordingWithMode() {
       render();
     };
     
-    // Start recording with 100ms intervals for better audio capture
-    mediaRecorder.start(100);
+    // Start recording with 1000ms intervals to handle long recordings better
+    // Longer intervals reduce memory pressure during extended recordings
+    mediaRecorder.start(1000);
     console.log('Recording started with audio mode:', state.audioMode);
     
     // Update timer (5 minute max = 300 seconds)
