@@ -563,6 +563,21 @@ function formatFullDate(dateStr) {
   return d.toLocaleDateString('en-US', options);
 }
 
+function detectRecordingType(speakerCount) {
+  if (speakerCount <= 1) return 'solo';
+  if (speakerCount === 2) return 'call';
+  return 'group';
+}
+
+function getRecordingTypeLabel(type) {
+  const labels = {
+    solo: 'Personal Note',
+    call: 'Voice Call',
+    group: 'Group Discussion'
+  };
+  return labels[type] || 'Voice Note';
+}
+
 /* ========== VIEWS ========== */
 function renderWelcome() {
   return `
@@ -660,14 +675,22 @@ function renderLibrary() {
   // Filter audio notes
   let audioNotes = state.notes.filter(n => n.hasAudio);
   
-  // Apply filter/sort
+  // Apply filter/sort based on selected filter
   if (state.libraryFilter === 'recent') {
+    // Sort by most recent first
     audioNotes = audioNotes.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   } else if (state.libraryFilter === 'longest') {
+    // Sort by duration (longest first)
     audioNotes = audioNotes.sort((a, b) => (b.duration || 0) - (a.duration || 0));
   } else if (state.libraryFilter === 'linked') {
-    audioNotes = audioNotes.filter(n => n.title && n.title.length > 0);
+    // Filter notes that have links/URLs in their content (http, https, www, etc.)
+    audioNotes = audioNotes.filter(n => {
+      const content = (n.content || '').toLowerCase();
+      const title = (n.title || '').toLowerCase();
+      return /http|https|www|\[.*\]\(.*\)|ftp/i.test(content + ' ' + title);
+    }).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   } else if (state.libraryFilter === 'starred') {
+    // Filter only starred notes, sorted by recent
     audioNotes = audioNotes.filter(n => n.starred).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   }
   
@@ -1657,9 +1680,23 @@ async function saveRecording() {
         }
       }
       
-      // 4. Create the note
-      const title = transcription.split('.')[0].slice(0, 60) || `Voice Note (${durationMinutes} min)`;
-      const content = summary || transcription;
+      // 4. Detect recording type (solo, call, or group)
+      const recordingType = detectRecordingType(speakers.length);
+      const recordingTypeLabel = getRecordingTypeLabel(recordingType);
+      
+      // Format content based on recording type
+      let content = '';
+      if (recordingType === 'solo') {
+        // Solo: simpler format (just summary, no speaker labels)
+        const cleanTranscript = transcription.replace(/\[Speaker \d+\]:\s*/g, '');
+        content = summary || cleanTranscript;
+      } else {
+        // Call/Group: keep full transcription with speaker identification
+        content = summary || transcription;
+      }
+      
+      // 5. Create the note
+      const title = transcription.split('.')[0].slice(0, 60) || recordingTypeLabel + ' (' + durationMinutes + ' min)';
       
       const note = await api.createNote({
         title: title,
